@@ -18,12 +18,12 @@
 
 # metadata
 " Ninja-IDE .desktop file editor "
-__version__ = ' 0.1 '
+__version__ = ' 0.2 '
 __license__ = ' GPL '
 __author__ = ' juancarlospaco '
 __email__ = ' juancarlospaco@ubuntu.com '
 __url__ = ''
-__date__ = ' 10/03/2013 '
+__date__ = ' 15/03/2013 '
 __prj__ = ' dotdesktop '
 __docformat__ = 'html'
 __source__ = ''
@@ -33,17 +33,20 @@ __full_licence__ = ''
 # imports
 from os import path
 from os import linesep
+from os import chmod
 
 from PyQt4.QtGui import QLabel
 from PyQt4.QtGui import QPushButton
 from PyQt4.QtGui import QFileDialog
-from PyQt4.QtGui import QWidget, QScrollArea
+from PyQt4.QtGui import QWidget
+from PyQt4.QtGui import QScrollArea
 from PyQt4.QtGui import QVBoxLayout
 from PyQt4.QtGui import QComboBox
 from PyQt4.QtGui import QCursor
 from PyQt4.QtGui import QLineEdit
+from PyQt4.QtGui import QCheckBox
 from PyQt4.QtCore import Qt
-
+from PyQt4.QtCore import QProcess
 
 from ninja_ide.gui.explorer.explorer_container import ExplorerContainer
 from ninja_ide.core import plugin
@@ -68,6 +71,9 @@ class Main(plugin.Plugin):
                                ' KDE Plasma MetaData .desktop ',
                                ' FreeDesktop Standard .desktop '])
         self.chooser.setToolTip('Select a target .desktop file format')
+
+        self.process = QProcess()
+        self.process.finished.connect(self.processFinished)
 
         # Standard FreeDesktop
         self.lblVersion = QLabel('Version')
@@ -157,6 +163,13 @@ class Main(plugin.Plugin):
         self.lblXAyatanaDesktopShortcuts = QLabel('X-Ayatana-Desktop-Shortcuts')
         self.ledXAyatanaDesktopShortcuts = QLineEdit('Next;Previous')
 
+        self.optionlbl = QLabel('        Open .desktop file when done')
+        self.checkbox1 = QCheckBox(self.optionlbl)
+        self.checkbox1.setChecked(True)
+
+        self.permislbl = QLabel('        Make .desktop file Executable')
+        self.checkbox2 = QCheckBox(self.permislbl)
+
         self.button = QPushButton(' OK ! ')
         self.button.clicked.connect(self.writeFile)
         self.button.setCursor(QCursor(Qt.PointingHandCursor))
@@ -168,7 +181,6 @@ class Main(plugin.Plugin):
                 ' init sub class '
                 super(TransientWidget, self).__init__()
                 vbox = QVBoxLayout(self)
-                #self.addScrollBarWidget(self, Qt.AlignRight)
                 for each_widget in widget_list:
                     vbox.addWidget(each_widget)
 
@@ -204,6 +216,9 @@ class Main(plugin.Plugin):
             self.ledXKDEPluginInfoEnabledByDefault,
             QLabel(''),
             self.lblXAyatanaDesktopShortcuts, self.ledXAyatanaDesktopShortcuts,
+            QLabel(''),
+            self.optionlbl,
+            self.permislbl,
             QLabel(''),
             self.button
         ))
@@ -268,30 +283,34 @@ class Main(plugin.Plugin):
 
         ''' * len(str(self.ledActions.text()).lower().strip().split(';'))
 
-        if self.chooser.currentIndex() is 0:
-            # print(''.join(a for a in iter((BASE, UNITY))))
-            flnm = str(QFileDialog.getSaveFileName(self.scrollable,
-                   " Save Desktop File as ... ",
-                   path.expanduser("~"), "Desktop (*.desktop)"))
-            f = open(flnm, 'w')
+        flnm = str(QFileDialog.getSaveFileName(self.scrollable,
+                   " Save Desktop File as ... ", path.expanduser("~"),
+                   "Desktop (*.desktop)"))
+        f = open(flnm, 'w')
+
+        if self.chooser.currentIndex() is 0 and flnm is not '':
             f.write(''.join(a for a in iter((BASE, UNITY, ACTIONS))))
-            f.close()
-        elif self.chooser.currentIndex() is 1:
-            # print(''.join(a for a in iter((BASE, PLASMA))))
-            flnm = str(QFileDialog.getSaveFileName(self.scrollable,
-                   " Save Desktop File as ... ",
-                   path.expanduser("~"), "Desktop (*.desktop)"))
-            f = open(flnm, 'w')
+        elif self.chooser.currentIndex() is 1 and flnm is not '':
             f.write(''.join(a for a in iter((BASE, PLASMA))))
-            f.close()
-        else:
-            # print(BASE)
-            flnm = str(QFileDialog.getSaveFileName(self.scrollable,
-                   " Save Desktop File as ... ",
-                   path.expanduser("~"), "Desktop (*.desktop)"))
-            f = open(flnm, 'w')
+        elif flnm is not '':
             f.write(BASE)
-            f.close()
+        f.close()
+
+        if self.checkbox2.isChecked() and flnm is not '':
+            try:
+                chmod(flnm, 0775)  # Py2
+            except:
+                chmod(flnm, 0o775)  # Py3
+
+        if self.checkbox1.isChecked() and flnm is not '':
+            self.process.start('ninja-ide ' + flnm)
+            if not self.process.waitForStarted():
+                print((" ERROR: %s failed!" % (str(flnm))))
+                return
+
+    def processFinished(self):
+        ' print info of finished processes '
+        print(" INFO: OK: QProcess finished . . . ")
 
 
 ###############################################################################
