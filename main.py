@@ -18,12 +18,12 @@
 
 # metadata
 " Ninja-IDE .desktop file editor "
-__version__ = ' 0.2 '
+__version__ = ' 0.4 '
 __license__ = ' GPL '
 __author__ = ' juancarlospaco '
 __email__ = ' juancarlospaco@ubuntu.com '
 __url__ = ''
-__date__ = ' 15/03/2013 '
+__date__ = ' 30/05/2013 '
 __prj__ = ' dotdesktop '
 __docformat__ = 'html'
 __source__ = ''
@@ -31,25 +31,22 @@ __full_licence__ = ''
 
 
 # imports
-from os import path
-from os import linesep
-from os import chmod
+from os import path, linesep, chmod
+from getpass import getuser
+from sip import setapi
 
-from PyQt4.QtGui import QLabel
-from PyQt4.QtGui import QPushButton
-from PyQt4.QtGui import QFileDialog
-from PyQt4.QtGui import QWidget
-from PyQt4.QtGui import QScrollArea
-from PyQt4.QtGui import QVBoxLayout
-from PyQt4.QtGui import QComboBox
-from PyQt4.QtGui import QCursor
-from PyQt4.QtGui import QLineEdit
-from PyQt4.QtGui import QCheckBox
-from PyQt4.QtCore import Qt
-from PyQt4.QtCore import QProcess
+from PyQt4.QtGui import (QLabel, QPushButton, QDoubleSpinBox, QFileDialog,
+    QWidget, QScrollArea, QVBoxLayout, QComboBox, QCursor, QLineEdit, QCheckBox)
+
+from PyQt4.QtCore import Qt, QProcess
 
 from ninja_ide.gui.explorer.explorer_container import ExplorerContainer
 from ninja_ide.core import plugin
+
+
+# API 2
+(setapi(a, 2) for a in ("QDate", "QDateTime", "QString", "QTime", "QUrl",
+                        "QTextStream", "QVariant"))
 
 
 # constans
@@ -64,7 +61,7 @@ class Main(plugin.Plugin):
         " Init Main Class "
         ec = ExplorerContainer()
         super(Main, self).initialize(*args, **kwargs)
-        self.titlelbl = QLabel('<center><h3>' + __doc__ + '</h3></center>')
+        self.titlelbl = QLabel('<center><h3>{}</h3></center>'.format(__doc__))
         self.chooser = QComboBox()
         self.chooser.setCursor(QCursor(Qt.PointingHandCursor))
         self.chooser.addItems([' Ubuntu Unity QuickList .desktop ',
@@ -77,7 +74,11 @@ class Main(plugin.Plugin):
 
         # Standard FreeDesktop
         self.lblVersion = QLabel('Version')
-        self.ledVersion = QLineEdit('1.0')
+        self.ledVersion = QDoubleSpinBox()
+        self.ledVersion.setMinimum(0.1)
+        self.ledVersion.setMaximum(999.9)
+        self.ledVersion.setValue(1.0)
+        self.ledVersion.setDecimals(1)
 
         self.lblType = QLabel('Type')
         self.ledType = QLineEdit('Application')
@@ -95,7 +96,29 @@ class Main(plugin.Plugin):
         self.ledIcon = QLineEdit('/path/to/icon.svg')
 
         self.lblCategories = QLabel('Categories')
-        self.ledCategories = QLineEdit('Development')
+        self.ledCategories = QComboBox()
+        self.ledCategories.addItems(['Python Programming Language',
+            'Development', 'Ruby', 'C++',
+            'Amateur Radio', 'Communication', 'Cross Platform', 'Databases',
+            'Debug', 'Documentation', 'Editors', 'Education', 'Electronics',
+            'Email', 'Embebed Devices', 'Fonts', 'GNOME Desktop Environment',
+            'GNU R Statistical System', 'GObject Introspection Data',
+            'Games and Amusement', 'Gnustep Desktop Environtment', 'Graphics',
+            'Haskell Programming Language',
+            'Internationalization and Localization', 'Internet',
+            'Interpreted Computer Languages', 'KDE Software Compilation',
+            'Kernel and Modules', 'Libraries', 'Libraries - Development',
+            'Libraries - Old', 'Lisp Programming Language', 'Localization',
+            'Mathematics', 'Meta Packages', 'Miscelaneous - Graphical',
+            'Miscelaneous - Text Based', 'Mono/CLI Infraestructure',
+            'Multimedia', 'Networking', 'Newsgroups',
+            'OCaml Programming Language', 'PHP Programming Language',
+            'Perl Programming Language', 'Ruby Programming Language',
+            'Science', 'Shells', 'System Administration', 'TeX Authoring',
+            'Utilities', 'Version Control Systems', 'Video Software',
+            'Web Servers', 'Word Processing', 'Xfce Desktop Environment',
+            'Zope/Plone Environment'
+        ])
 
         self.lblExec = QLabel('Exec')
         self.ledExec = QLineEdit('myexecutable --parameters')
@@ -107,7 +130,8 @@ class Main(plugin.Plugin):
         self.ledMymeType = QLineEdit('application/x-desktop')
 
         self.lblTerminal = QLabel('Terminal')
-        self.ledTerminal = QLineEdit('False')
+        self.ledTerminal = QComboBox()
+        self.ledTerminal.addItems(['False', 'True'])
 
         self.lblActions = QLabel('Actions')
         self.ledActions = QLineEdit('Next;Previous')
@@ -120,22 +144,25 @@ class Main(plugin.Plugin):
 
         # KDE Plasma
         self.lblEncoding = QLabel('Encoding')
-        self.ledEncoding = QLineEdit('UTF-8')
+        self.ledEncoding = QComboBox()
+        self.ledEncoding.addItems(['UTF-8', 'ISO-8859-1'])
 
         self.lblServiceType = QLabel('ServiceType')
         self.ledServiceType = QLineEdit('Plasma/Applet')
 
         self.lblXPlasmaAPI = QLabel('X-Plasma-API')
-        self.ledXPlasmaAPI = QLineEdit('python')
+        self.ledXPlasmaAPI = QComboBox()
+        self.ledXPlasmaAPI.addItems([
+                        'Python', 'Javascript', 'Ruby', 'C++', 'HTML5', 'QML'])
 
         self.lblXPlasmaMainScript = QLabel('X-Plasma-MainScript')
         self.ledXPlasmaMainScript = QLineEdit('path/to/your/code.py')
 
         self.lblXKDEPluginInfoAuthor = QLabel('X-KDE-PluginInfo-Author')
-        self.ledXKDEPluginInfoAuthor = QLineEdit('Your Name Here')
+        self.ledXKDEPluginInfoAuthor = QLineEdit(getuser())
 
         self.lblXKDEPluginInfoEmail = QLabel('X-KDE-PluginInfo-Email')
-        self.ledXKDEPluginInfoEmail = QLineEdit('email@addres.com')
+        self.ledXKDEPluginInfoEmail = QLineEdit(getuser() + '@gmail.com')
 
         self.lblXKDEPluginInfoName = QLabel('X-KDE-PluginInfo-Name')
         self.ledXKDEPluginInfoName = QLineEdit('Hello-World')
@@ -144,10 +171,16 @@ class Main(plugin.Plugin):
         self.ledXKDEPluginInfoVersion = QLineEdit('1.0')
 
         self.lblXKDEPluginInfoWebsite = QLabel('X-KDE-PluginInfo-Website')
-        self.ledXKDEPluginInfoWebsite = QLineEdit('http://plasma.kde.org')
+        self.ledXKDEPluginInfoWebsite = QLineEdit('http:plasma.kde.org')
 
         self.lblXKDEPluginInfoCategory = QLabel('X-KDE-PluginInfo-Category')
-        self.ledXKDEPluginInfoCategory = QLineEdit('Examples')
+        self.ledXKDEPluginInfoCategory = QComboBox()
+        self.ledXKDEPluginInfoCategory.addItems(['Application Launchers',
+            'Accessibility', 'Astronomy', 'Date and Time',
+            'Development Tools', 'Education', 'Environment', 'Examples',
+            'File System', 'Fun and Games', 'Graphics', 'Language', 'Mapping',
+            'Multimedia', 'Online Services', 'System Information', 'Utilities',
+            'Windows and Tasks', 'Miscelaneous'])
 
         self.lblXKDEPluginInfoDepends = QLabel('X-KDE-PluginInfo-Depends')
         self.ledXKDEPluginInfoDepends = QLineEdit('')
@@ -157,7 +190,8 @@ class Main(plugin.Plugin):
 
         self.lblXKDEPluginInfoEnabledByDefault = QLabel(
                                         'X-KDE-PluginInfo-EnabledByDefault')
-        self.ledXKDEPluginInfoEnabledByDefault = QLineEdit('true')
+        self.ledXKDEPluginInfoEnabledByDefault = QComboBox()
+        self.ledXKDEPluginInfoEnabledByDefault.addItems(['True', 'False'])
 
         # Ubuntu Unity
         self.lblXAyatanaDesktopShortcuts = QLabel('X-Ayatana-Desktop-Shortcuts')
@@ -230,49 +264,57 @@ class Main(plugin.Plugin):
         ' write the .desktop file to disk '
 
         UNITY = ''.join(a for a in iter((
-        'OnlyShowIn=', str(self.ledOnlyShowIn.text()), linesep,
-        'NotShowIn=', str(self.ledNotShowIn.text()), linesep,
-        'X-Ayatana-Desktop-Shortcuts=',
-        str(self.ledXAyatanaDesktopShortcuts.text()), linesep)))
+            'OnlyShowIn=', str(self.ledOnlyShowIn.text()), linesep,
+            'NotShowIn=', str(self.ledNotShowIn.text()), linesep,
+            'X-Ayatana-Desktop-Shortcuts=',
+            str(self.ledXAyatanaDesktopShortcuts.text()), linesep)))
 
         PLASMA = ''.join(a for a in iter((
-        'OnlyShowIn=', str(self.ledOnlyShowIn.text()), linesep,
-        'NotShowIn=', str(self.ledNotShowIn.text()), linesep,
-        'Encoding=', str(self.ledEncoding.text()), linesep,
-        'ServiceTypes=', str(self.ledServiceType.text()), linesep,
-        'X-Plasma-API=', str(self.ledXPlasmaAPI.text()), linesep,
-        'X-Plasma-MainScript=', str(self.ledXPlasmaMainScript.text()), linesep,
-        'X-KDE-PluginInfo-Author=', str(self.ledXKDEPluginInfoAuthor.text()),
-        linesep,
-        'X-KDE-PluginInfo-Email=', str(self.ledXKDEPluginInfoEmail.text()),
-        linesep,
-        'X-KDE-PluginInfo-Name=', str(self.ledXKDEPluginInfoName.text()),
-        linesep,
-        'X-KDE-PluginInfo-Version=', str(self.ledXKDEPluginInfoVersion.text()),
-        linesep,
-        'X-KDE-PluginInfo-Website=', str(self.ledXKDEPluginInfoWebsite.text()),
-        linesep,
-        'X-KDE-PluginInfo-Category=',
-        str(self.ledXKDEPluginInfoCategory.text()), linesep,
-        'X-KDE-PluginInfo-Depends=', str(self.ledXKDEPluginInfoDepends.text()),
-        linesep,
-        'X-KDE-PluginInfo-License=', str(self.ledXKDEPluginInfoLicense.text()),
-        linesep,
-        'X-KDE-PluginInfo-EnabledByDefault=',
-        str(self.ledXKDEPluginInfoEnabledByDefault.text()), linesep)))
+            'OnlyShowIn=', str(self.ledOnlyShowIn.text()), linesep,
+            'NotShowIn=', str(self.ledNotShowIn.text()), linesep,
+            'Encoding=', str(self.ledEncoding.currentText()), linesep,
+            'ServiceTypes=', str(self.ledServiceType.text()), linesep,
+            'X-Plasma-API=', str(self.ledXPlasmaAPI.currentText()), linesep,
+            'X-Plasma-MainScript=', str(self.ledXPlasmaMainScript.text()),
+            linesep,
+            'X-KDE-PluginInfo-Author=',
+            str(self.ledXKDEPluginInfoAuthor.text()),
+            linesep,
+            'X-KDE-PluginInfo-Email=', str(self.ledXKDEPluginInfoEmail.text()),
+            linesep,
+            'X-KDE-PluginInfo-Name=', str(self.ledXKDEPluginInfoName.text()),
+            linesep,
+            'X-KDE-PluginInfo-Version=',
+            str(self.ledXKDEPluginInfoVersion.text()),
+            linesep,
+            'X-KDE-PluginInfo-Website=',
+            str(self.ledXKDEPluginInfoWebsite.text()),
+            linesep,
+            'X-KDE-PluginInfo-Category=',
+            str(self.ledXKDEPluginInfoCategory.currentText()),
+            linesep,
+            'X-KDE-PluginInfo-Depends=',
+            str(self.ledXKDEPluginInfoDepends.text()),
+            linesep,
+            'X-KDE-PluginInfo-License=',
+            str(self.ledXKDEPluginInfoLicense.text()),
+            linesep,
+            'X-KDE-PluginInfo-EnabledByDefault=',
+            str(self.ledXKDEPluginInfoEnabledByDefault.currentText()),
+            linesep)))
 
         BASE = ''.join(a for a in iter((
-        '[Desktop Entry]', linesep,
-        'Version=', str(self.ledVersion.text()), linesep,
-        'Type=', str(self.ledType.text()), linesep,
-        'Name=', str(self.ledName.text()), linesep,
-        'Comment=', str(self.ledComment.text()), linesep,
-        'TryExec=', str(self.ledTryExec.text()), linesep,
-        'Exec=', str(self.ledExec.text()), linesep,
-        'Icon=', str(self.ledIcon.text()), linesep,
-        'MimeType=', str(self.ledMymeType.text()), linesep,
-        'Actions=', str(self.ledActions.text()), linesep,
-        'Terminal=', str(self.ledTerminal.text()), linesep)))
+            '[Desktop Entry]', linesep,
+            'Version=', str(self.ledVersion.value()), linesep,
+            'Type=', str(self.ledType.text()), linesep,
+            'Name=', str(self.ledName.text()), linesep,
+            'Comment=', str(self.ledComment.text()), linesep,
+            'TryExec=', str(self.ledTryExec.text()), linesep,
+            'Exec=', str(self.ledExec.text()), linesep,
+            'Icon=', str(self.ledIcon.text()), linesep,
+            'MimeType=', str(self.ledMymeType.text()), linesep,
+            'Actions=', str(self.ledActions.text()), linesep,
+            'Terminal=', str(self.ledTerminal.currentText()), linesep)))
 
         ACTIONS = '''
 
@@ -303,9 +345,9 @@ class Main(plugin.Plugin):
                 chmod(flnm, 0o775)  # Py3
 
         if self.checkbox1.isChecked() and flnm is not '':
-            self.process.start('ninja-ide ' + flnm)
+            self.process.start('ninja-ide {}'.format(flnm))
             if not self.process.waitForStarted():
-                print((" ERROR: %s failed!" % (str(flnm))))
+                print((" ERROR: Process {} Failed!".format(str(flnm))))
                 return
 
     def processFinished(self):
