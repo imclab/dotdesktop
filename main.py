@@ -328,15 +328,14 @@ class Main(plugin.Plugin):
         flnm = str(QFileDialog.getSaveFileName(self.scrollable,
                    " Save Desktop File as ... ", path.expanduser("~"),
                    "Desktop (*.desktop)"))
-        f = open(flnm, 'w')
 
-        if self.chooser.currentIndex() is 0 and flnm is not '':
-            f.write(''.join(a for a in iter((BASE, UNITY, ACTIONS))))
-        elif self.chooser.currentIndex() is 1 and flnm is not '':
-            f.write(''.join(a for a in iter((BASE, PLASMA))))
-        elif flnm is not '':
-            f.write(BASE)
-        f.close()
+        with open(flnm, 'w') as f:
+            if self.chooser.currentIndex() is 0 and flnm is not '':
+                f.write(''.join(a for a in iter((BASE, UNITY, ACTIONS))))
+            elif self.chooser.currentIndex() is 1 and flnm is not '':
+                f.write(''.join(a for a in iter((BASE, PLASMA))))
+            elif flnm is not '':
+                f.write(BASE)
 
         if self.checkbox2.isChecked() and flnm is not '':
             try:
@@ -354,6 +353,9 @@ class Main(plugin.Plugin):
         ' print info of finished processes '
         print(" INFO: OK: QProcess finished . . . ")
 
+    def __str__(self):
+        ' self.__str__ builtin '
+        return __doc__, __version__, __license__, __author__
 
 ###############################################################################
 
