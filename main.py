@@ -17,13 +17,13 @@
 
 
 # metadata
-" Ninja-IDE .desktop file editor "
-__version__ = ' 0.4 '
+" Ninja .desktop file editor "
+__version__ = ' 0.8 '
 __license__ = ' GPL '
 __author__ = ' juancarlospaco '
 __email__ = ' juancarlospaco@ubuntu.com '
 __url__ = ''
-__date__ = ' 30/05/2013 '
+__date__ = ' 15/03/2013 '
 __prj__ = ' dotdesktop '
 __docformat__ = 'html'
 __source__ = ''
@@ -31,25 +31,28 @@ __full_licence__ = ''
 
 
 # imports
-from os import path, linesep, chmod
+from os import linesep, chmod
 from getpass import getuser
-from sip import setapi
 
 from PyQt4.QtGui import (QLabel, QPushButton, QDoubleSpinBox, QFileDialog,
-    QWidget, QScrollArea, QVBoxLayout, QComboBox, QCursor, QLineEdit, QCheckBox)
-
-from PyQt4.QtCore import Qt, QProcess
+    QWidget, QScrollArea, QVBoxLayout, QComboBox, QLineEdit, QCheckBox, QColor,
+    QDockWidget, QGraphicsDropShadowEffect, QGraphicsBlurEffect, QGroupBox,
+    QMessageBox, QIcon)
+from PyQt4.QtCore import QProcess
 
 from ninja_ide.gui.explorer.explorer_container import ExplorerContainer
 from ninja_ide.core import plugin
 
 
-# API 2
-(setapi(a, 2) for a in ("QDate", "QDateTime", "QString", "QTime", "QUrl",
-                        "QTextStream", "QVariant"))
-
-
 # constans
+ACTIONS = '''
+
+[Desktop Action Name_Your_Command_here]
+Name=Name_Your_Command_here
+Exec=Your_Command_here
+OnlyShowIn=Unity;
+
+'''
 
 
 ###############################################################################
@@ -59,51 +62,32 @@ class Main(plugin.Plugin):
     " Main Class "
     def initialize(self, *args, **kwargs):
         " Init Main Class "
-        ec = ExplorerContainer()
         super(Main, self).initialize(*args, **kwargs)
-        self.titlelbl = QLabel('<center><h3>{}</h3></center>'.format(__doc__))
-        self.chooser = QComboBox()
-        self.chooser.setCursor(QCursor(Qt.PointingHandCursor))
+        self.chooser, self.process = QComboBox(), QProcess()
         self.chooser.addItems([' Ubuntu Unity QuickList .desktop ',
                                ' KDE Plasma MetaData .desktop ',
                                ' FreeDesktop Standard .desktop '])
+        self.chooser.currentIndexChanged.connect(self.on_index_changed)
         self.chooser.setToolTip('Select a target .desktop file format')
 
-        self.process = QProcess()
-        self.process.finished.connect(self.processFinished)
-
         # Standard FreeDesktop
-        self.lblVersion = QLabel('Version')
-        self.ledVersion = QDoubleSpinBox()
+        self.group1 = QGroupBox()
+        self.group1.setTitle(' Standard ')
+        self.ledVersion, self.ledCategories = QDoubleSpinBox(), QComboBox()
         self.ledVersion.setMinimum(0.1)
         self.ledVersion.setMaximum(999.9)
         self.ledVersion.setValue(1.0)
         self.ledVersion.setDecimals(1)
-
-        self.lblType = QLabel('Type')
-        self.ledType = QLineEdit('Application')
-
-        self.lblName = QLabel('Name')
-        self.ledName = QLineEdit('My App')
-
-        self.lblGenericName = QLabel('GenericName')
+        self.ledType, self.ledName = QLineEdit('Application'), QLineEdit('App')
         self.ledGenericName = QLineEdit('Generic App')
-
-        self.lblComment = QLabel('Comment')
-        self.ledComment = QLineEdit('Just Another App')
-
-        self.lblIcon = QLabel('Icon')
-        self.ledIcon = QLineEdit('/path/to/icon.svg')
-
-        self.lblCategories = QLabel('Categories')
-        self.ledCategories = QComboBox()
+        self.ledComment, self.ledIcon = QLineEdit('App'), QLineEdit('icon.svg')
         self.ledCategories.addItems(['Python Programming Language',
-            'Development', 'Ruby', 'C++',
-            'Amateur Radio', 'Communication', 'Cross Platform', 'Databases',
-            'Debug', 'Documentation', 'Editors', 'Education', 'Electronics',
-            'Email', 'Embebed Devices', 'Fonts', 'GNOME Desktop Environment',
-            'GNU R Statistical System', 'GObject Introspection Data',
-            'Games and Amusement', 'Gnustep Desktop Environtment', 'Graphics',
+            'Development', 'Ruby', 'C++', 'Amateur Radio', 'Communication',
+            'Cross Platform', 'Databases', 'Debug', 'Documentation', 'Editors',
+            'Education', 'Electronics', 'Email', 'Embebed Devices', 'Fonts',
+            'GNOME Desktop Environment', 'GNU R Statistical System',
+            'GObject Introspection Data', 'Games and Amusement',
+            'Gnustep Desktop Environtment', 'Graphics',
             'Haskell Programming Language',
             'Internationalization and Localization', 'Internet',
             'Interpreted Computer Languages', 'KDE Software Compilation',
@@ -117,63 +101,42 @@ class Main(plugin.Plugin):
             'Science', 'Shells', 'System Administration', 'TeX Authoring',
             'Utilities', 'Version Control Systems', 'Video Software',
             'Web Servers', 'Word Processing', 'Xfce Desktop Environment',
-            'Zope/Plone Environment'
-        ])
+            'Zope/Plone Environment'])
 
-        self.lblExec = QLabel('Exec')
-        self.ledExec = QLineEdit('myexecutable --parameters')
-
-        self.lblTryExec = QLabel('TryExec')
-        self.ledTryExec = QLineEdit('myexecutable --parameters')
-
-        self.lblMymeType = QLabel('MymeType')
+        self.ledExec, self.ledTryExec = QLineEdit('myapp'), QLineEdit('myapp')
         self.ledMymeType = QLineEdit('application/x-desktop')
-
-        self.lblTerminal = QLabel('Terminal')
         self.ledTerminal = QComboBox()
         self.ledTerminal.addItems(['False', 'True'])
-
-        self.lblActions = QLabel('Actions')
         self.ledActions = QLineEdit('Next;Previous')
-
-        self.lblOnlyShowIn = QLabel('OnlyShowIn')
         self.ledOnlyShowIn = QLineEdit('Unity;KDE')
-
-        self.lblNotShowIn = QLabel('NotShowIn')
         self.ledNotShowIn = QLineEdit('Gnome2')
+        vboxg1 = QVBoxLayout(self.group1)
+        for each_widget in (QLabel('Version'), self.ledVersion, QLabel('Type'),
+            self.ledType, QLabel('Name'), self.ledName, QLabel('GenericName'),
+            self.ledGenericName, QLabel('Comment'), self.ledComment,
+            QLabel('Icon'), self.ledIcon, QLabel('Categories'),
+            self.ledCategories, QLabel('Exec'), self.ledExec, QLabel('TryExec'),
+            self.ledTryExec, QLabel('MymeType'), self.ledMymeType,
+            QLabel('Terminal'), self.ledTerminal, QLabel('Actions'),
+            self.ledActions, QLabel('OnlyShowIn'), self.ledOnlyShowIn,
+            QLabel('NotShowIn'), self.ledNotShowIn):
+            vboxg1.addWidget(each_widget)
 
         # KDE Plasma
-        self.lblEncoding = QLabel('Encoding')
-        self.ledEncoding = QComboBox()
+        self.group2 = QGroupBox()
+        self.group2.setTitle(' KDE Plasma ')
+        self.group2.setGraphicsEffect(QGraphicsBlurEffect(self))
+        self.ledEncoding, self.ledXPlasmaAPI = QComboBox(), QComboBox()
         self.ledEncoding.addItems(['UTF-8', 'ISO-8859-1'])
-
-        self.lblServiceType = QLabel('ServiceType')
         self.ledServiceType = QLineEdit('Plasma/Applet')
-
-        self.lblXPlasmaAPI = QLabel('X-Plasma-API')
-        self.ledXPlasmaAPI = QComboBox()
         self.ledXPlasmaAPI.addItems([
                         'Python', 'Javascript', 'Ruby', 'C++', 'HTML5', 'QML'])
-
-        self.lblXPlasmaMainScript = QLabel('X-Plasma-MainScript')
         self.ledXPlasmaMainScript = QLineEdit('path/to/your/code.py')
-
-        self.lblXKDEPluginInfoAuthor = QLabel('X-KDE-PluginInfo-Author')
         self.ledXKDEPluginInfoAuthor = QLineEdit(getuser())
-
-        self.lblXKDEPluginInfoEmail = QLabel('X-KDE-PluginInfo-Email')
         self.ledXKDEPluginInfoEmail = QLineEdit(getuser() + '@gmail.com')
-
-        self.lblXKDEPluginInfoName = QLabel('X-KDE-PluginInfo-Name')
         self.ledXKDEPluginInfoName = QLineEdit('Hello-World')
-
-        self.lblXKDEPluginInfoVersion = QLabel('X-KDE-PluginInfo-Version')
         self.ledXKDEPluginInfoVersion = QLineEdit('1.0')
-
-        self.lblXKDEPluginInfoWebsite = QLabel('X-KDE-PluginInfo-Website')
         self.ledXKDEPluginInfoWebsite = QLineEdit('http:plasma.kde.org')
-
-        self.lblXKDEPluginInfoCategory = QLabel('X-KDE-PluginInfo-Category')
         self.ledXKDEPluginInfoCategory = QComboBox()
         self.ledXKDEPluginInfoCategory.addItems(['Application Launchers',
             'Accessibility', 'Astronomy', 'Date and Time',
@@ -181,33 +144,44 @@ class Main(plugin.Plugin):
             'File System', 'Fun and Games', 'Graphics', 'Language', 'Mapping',
             'Multimedia', 'Online Services', 'System Information', 'Utilities',
             'Windows and Tasks', 'Miscelaneous'])
-
-        self.lblXKDEPluginInfoDepends = QLabel('X-KDE-PluginInfo-Depends')
-        self.ledXKDEPluginInfoDepends = QLineEdit('')
-
-        self.lblXKDEPluginInfoLicense = QLabel('X-KDE-PluginInfo-License')
+        self.ledXKDEPluginInfoDepends = QLineEdit()
         self.ledXKDEPluginInfoLicense = QLineEdit('GPL')
-
-        self.lblXKDEPluginInfoEnabledByDefault = QLabel(
-                                        'X-KDE-PluginInfo-EnabledByDefault')
         self.ledXKDEPluginInfoEnabledByDefault = QComboBox()
         self.ledXKDEPluginInfoEnabledByDefault.addItems(['True', 'False'])
+        vboxg2 = QVBoxLayout(self.group2)
+        for each_widget in (
+            QLabel('Encoding'), self.ledEncoding,
+            QLabel('ServiceType'), self.ledServiceType,
+            QLabel('X-Plasma-API'), self.ledXPlasmaAPI,
+            QLabel('X-Plasma-MainScript'), self.ledXPlasmaMainScript,
+            QLabel('X-KDE-PluginInfo-Author'), self.ledXKDEPluginInfoAuthor,
+            QLabel('X-KDE-PluginInfo-Email'), self.ledXKDEPluginInfoEmail,
+            QLabel('X-KDE-PluginInfo-Name'), self.ledXKDEPluginInfoName,
+            QLabel('X-KDE-PluginInfo-Version'), self.ledXKDEPluginInfoVersion,
+            QLabel('X-KDE-PluginInfo-Website'), self.ledXKDEPluginInfoWebsite,
+            QLabel('X-KDE-PluginInfo-Category'), self.ledXKDEPluginInfoCategory,
+            QLabel('X-KDE-PluginInfo-Depends'), self.ledXKDEPluginInfoDepends,
+            QLabel('X-KDE-PluginInfo-License'), self.ledXKDEPluginInfoLicense,
+            QLabel('X-KDE-PluginInfo-EnabledByDefault'),
+            self.ledXKDEPluginInfoEnabledByDefault):
+            vboxg2.addWidget(each_widget)
 
         # Ubuntu Unity
-        self.lblXAyatanaDesktopShortcuts = QLabel('X-Ayatana-Desktop-Shortcuts')
         self.ledXAyatanaDesktopShortcuts = QLineEdit('Next;Previous')
 
-        self.optionlbl = QLabel('        Open .desktop file when done')
-        self.checkbox1 = QCheckBox(self.optionlbl)
-        self.checkbox1.setChecked(True)
+        self.checkbox1 = QCheckBox('Open .desktop file when done')
+        self.checkbox2 = QCheckBox('Make .desktop file Executable')
+        [a.setChecked(True) for a in (self.checkbox1, self.checkbox2)]
 
-        self.permislbl = QLabel('        Make .desktop file Executable')
-        self.checkbox2 = QCheckBox(self.permislbl)
-
-        self.button = QPushButton(' OK ! ')
+        self.button = QPushButton(' Make .Desktop File ! ')
+        self.button.setMinimumSize(100, 50)
         self.button.clicked.connect(self.writeFile)
-        self.button.setCursor(QCursor(Qt.PointingHandCursor))
-        self.button.setToolTip(' Make the .desktop file ! ')
+        glow = QGraphicsDropShadowEffect(self)
+        glow.setOffset(0)
+        glow.setBlurRadius(99)
+        glow.setColor(QColor(99, 255, 255))
+        self.button.setGraphicsEffect(glow)
+        glow.setEnabled(True)
 
         class TransientWidget(QWidget):
             ' persistant widget thingy '
@@ -218,144 +192,105 @@ class Main(plugin.Plugin):
                 for each_widget in widget_list:
                     vbox.addWidget(each_widget)
 
-        tw = TransientWidget((
-            self.titlelbl, self.chooser, QLabel(''),
-            self.lblVersion, self.ledVersion,
-            self.lblType, self.ledType,
-            self.lblName, self.ledName,
-            self.lblGenericName, self.ledGenericName,
-            self.lblComment, self.ledComment,
-            self.lblIcon, self.ledIcon,
-            self.lblCategories, self.ledCategories,
-            self.lblExec, self.ledExec,
-            self.lblTryExec, self.ledTryExec,
-            self.lblMymeType, self.ledMymeType,
-            self.lblTerminal, self.ledTerminal,
-            self.lblActions, self.ledActions,
-            self.lblOnlyShowIn, self.ledOnlyShowIn,
-            self.lblNotShowIn, self.ledNotShowIn, QLabel(''),
-            self.lblEncoding, self.ledEncoding,
-            self.lblServiceType, self.ledServiceType,
-            self.lblXPlasmaAPI, self.ledXPlasmaAPI,
-            self.lblXPlasmaMainScript, self.ledXPlasmaMainScript,
-            self.lblXKDEPluginInfoAuthor, self.ledXKDEPluginInfoAuthor,
-            self.lblXKDEPluginInfoEmail, self.ledXKDEPluginInfoEmail,
-            self.lblXKDEPluginInfoName, self.ledXKDEPluginInfoName,
-            self.lblXKDEPluginInfoVersion, self.ledXKDEPluginInfoVersion,
-            self.lblXKDEPluginInfoWebsite, self.ledXKDEPluginInfoWebsite,
-            self.lblXKDEPluginInfoCategory, self.ledXKDEPluginInfoCategory,
-            self.lblXKDEPluginInfoDepends, self.ledXKDEPluginInfoDepends,
-            self.lblXKDEPluginInfoLicense, self.ledXKDEPluginInfoLicense,
-            self.lblXKDEPluginInfoEnabledByDefault,
-            self.ledXKDEPluginInfoEnabledByDefault,
-            QLabel(''),
-            self.lblXAyatanaDesktopShortcuts, self.ledXAyatanaDesktopShortcuts,
-            QLabel(''),
-            self.optionlbl,
-            self.permislbl,
-            QLabel(''),
-            self.button
-        ))
-        self.scrollable = QScrollArea()
+        tw = TransientWidget((self.chooser, self.group1, self.group2,
+            QLabel('X-Ayatana-Desktop-Shortcuts'),
+            self.ledXAyatanaDesktopShortcuts, QLabel(''),
+            self.checkbox1, self.checkbox2, self.button))
+        self.dock, self.scrollable = QDockWidget(), QScrollArea()
+        self.scrollable.setWidgetResizable(True)
         self.scrollable.setWidget(tw)
-        ec.addTab(self.scrollable, "DotDesktop")
+        self.dock.setWindowTitle(__doc__)
+        self.dock.setStyleSheet('QDockWidget::title{text-align: center;}')
+        self.dock.setWidget(self.scrollable)
+        ExplorerContainer().addTab(self.dock, "DotDesktop")
+        QPushButton(QIcon.fromTheme("help-about"), 'About', self.dock
+          ).clicked.connect(lambda: QMessageBox.information(self.dock, __doc__,
+          ''.join((__doc__, __version__, __license__, 'by', __author__))))
 
     def writeFile(self):
         ' write the .desktop file to disk '
 
         UNITY = ''.join(a for a in iter((
-            'OnlyShowIn=', str(self.ledOnlyShowIn.text()), linesep,
-            'NotShowIn=', str(self.ledNotShowIn.text()), linesep,
-            'X-Ayatana-Desktop-Shortcuts=',
-            str(self.ledXAyatanaDesktopShortcuts.text()), linesep)))
+        'OnlyShowIn=', str(self.ledOnlyShowIn.text()), linesep,
+        'NotShowIn=', str(self.ledNotShowIn.text()), linesep,
+        'X-Ayatana-Desktop-Shortcuts=',
+        str(self.ledXAyatanaDesktopShortcuts.text()), linesep)))
 
         PLASMA = ''.join(a for a in iter((
-            'OnlyShowIn=', str(self.ledOnlyShowIn.text()), linesep,
-            'NotShowIn=', str(self.ledNotShowIn.text()), linesep,
-            'Encoding=', str(self.ledEncoding.currentText()), linesep,
-            'ServiceTypes=', str(self.ledServiceType.text()), linesep,
-            'X-Plasma-API=', str(self.ledXPlasmaAPI.currentText()), linesep,
-            'X-Plasma-MainScript=', str(self.ledXPlasmaMainScript.text()),
-            linesep,
-            'X-KDE-PluginInfo-Author=',
-            str(self.ledXKDEPluginInfoAuthor.text()),
-            linesep,
-            'X-KDE-PluginInfo-Email=', str(self.ledXKDEPluginInfoEmail.text()),
-            linesep,
-            'X-KDE-PluginInfo-Name=', str(self.ledXKDEPluginInfoName.text()),
-            linesep,
-            'X-KDE-PluginInfo-Version=',
-            str(self.ledXKDEPluginInfoVersion.text()),
-            linesep,
-            'X-KDE-PluginInfo-Website=',
-            str(self.ledXKDEPluginInfoWebsite.text()),
-            linesep,
-            'X-KDE-PluginInfo-Category=',
-            str(self.ledXKDEPluginInfoCategory.currentText()),
-            linesep,
-            'X-KDE-PluginInfo-Depends=',
-            str(self.ledXKDEPluginInfoDepends.text()),
-            linesep,
-            'X-KDE-PluginInfo-License=',
-            str(self.ledXKDEPluginInfoLicense.text()),
-            linesep,
-            'X-KDE-PluginInfo-EnabledByDefault=',
-            str(self.ledXKDEPluginInfoEnabledByDefault.currentText()),
-            linesep)))
+        'OnlyShowIn=', str(self.ledOnlyShowIn.text()), linesep,
+        'NotShowIn=', str(self.ledNotShowIn.text()), linesep,
+        'Encoding=', str(self.ledEncoding.currentText()), linesep,
+        'ServiceTypes=', str(self.ledServiceType.text()), linesep,
+        'X-Plasma-API=', str(self.ledXPlasmaAPI.currentText()), linesep,
+        'X-Plasma-MainScript=', str(self.ledXPlasmaMainScript.text()), linesep,
+        'X-KDE-PluginInfo-Author=', str(self.ledXKDEPluginInfoAuthor.text()),
+        linesep,
+        'X-KDE-PluginInfo-Email=', str(self.ledXKDEPluginInfoEmail.text()),
+        linesep,
+        'X-KDE-PluginInfo-Name=', str(self.ledXKDEPluginInfoName.text()),
+        linesep,
+        'X-KDE-PluginInfo-Version=', str(self.ledXKDEPluginInfoVersion.text()),
+        linesep,
+        'X-KDE-PluginInfo-Website=', str(self.ledXKDEPluginInfoWebsite.text()),
+        linesep,
+        'X-KDE-PluginInfo-Category=',
+        str(self.ledXKDEPluginInfoCategory.currentText()), linesep,
+        'X-KDE-PluginInfo-Depends=', str(self.ledXKDEPluginInfoDepends.text()),
+        linesep,
+        'X-KDE-PluginInfo-License=', str(self.ledXKDEPluginInfoLicense.text()),
+        linesep,
+        'X-KDE-PluginInfo-EnabledByDefault=',
+        str(self.ledXKDEPluginInfoEnabledByDefault.currentText()), linesep)))
 
         BASE = ''.join(a for a in iter((
-            '[Desktop Entry]', linesep,
-            'Version=', str(self.ledVersion.value()), linesep,
-            'Type=', str(self.ledType.text()), linesep,
-            'Name=', str(self.ledName.text()), linesep,
-            'Comment=', str(self.ledComment.text()), linesep,
-            'TryExec=', str(self.ledTryExec.text()), linesep,
-            'Exec=', str(self.ledExec.text()), linesep,
-            'Icon=', str(self.ledIcon.text()), linesep,
-            'MimeType=', str(self.ledMymeType.text()), linesep,
-            'Actions=', str(self.ledActions.text()), linesep,
-            'Terminal=', str(self.ledTerminal.currentText()), linesep)))
+        '[Desktop Entry]', linesep,
+        'Version=', str(self.ledVersion.value()), linesep,
+        'Type=', str(self.ledType.text()), linesep,
+        'Name=', str(self.ledName.text()), linesep,
+        'Comment=', str(self.ledComment.text()), linesep,
+        'TryExec=', str(self.ledTryExec.text()), linesep,
+        'Exec=', str(self.ledExec.text()), linesep,
+        'Icon=', str(self.ledIcon.text()), linesep,
+        'MimeType=', str(self.ledMymeType.text()), linesep,
+        'Actions=', str(self.ledActions.text()), linesep,
+        'Terminal=', str(self.ledTerminal.currentText()), linesep)))
 
-        ACTIONS = '''
+        ACTIONS * len(str(self.ledActions.text()).lower().strip().split(';'))
 
-        [Desktop Action Name_Your_Command_here]
-        Name=Name_Your_Command_here
-        Exec=Your_Command_here
-        OnlyShowIn=Unity;
-
-        ''' * len(str(self.ledActions.text()).lower().strip().split(';'))
-
-        flnm = str(QFileDialog.getSaveFileName(self.scrollable,
-                   " Save Desktop File as ... ", path.expanduser("~"),
-                   "Desktop (*.desktop)"))
-
-        with open(flnm, 'w') as f:
-            if self.chooser.currentIndex() is 0 and flnm is not '':
+        fnm = str(QFileDialog.getSaveFileName(self.dock, '', '', "(*.desktop)"))
+        with open(fnm, 'w') as f:
+            if self.chooser.currentIndex() is 0 and fnm is not '':
                 f.write(''.join(a for a in iter((BASE, UNITY, ACTIONS))))
-            elif self.chooser.currentIndex() is 1 and flnm is not '':
+            elif self.chooser.currentIndex() is 1 and fnm is not '':
                 f.write(''.join(a for a in iter((BASE, PLASMA))))
-            elif flnm is not '':
+            elif fnm is not '':
                 f.write(BASE)
 
-        if self.checkbox2.isChecked() and flnm is not '':
+        if self.checkbox2.isChecked() and fnm is not '':
             try:
-                chmod(flnm, 0775)  # Py2
+                chmod(fnm, 0775)  # Py2
             except:
-                chmod(flnm, 0o775)  # Py3
+                chmod(fnm, 0o775)  # Py3
 
-        if self.checkbox1.isChecked() and flnm is not '':
-            self.process.start('ninja-ide {}'.format(flnm))
+        if self.checkbox1.isChecked() and fnm is not '':
+            self.process.start('ninja-ide ' + fnm)
             if not self.process.waitForStarted():
-                print((" ERROR: Process {} Failed!".format(str(flnm))))
+                print((" ERROR: FAIL: {} failed!".format(fnm)))
                 return
 
-    def processFinished(self):
-        ' print info of finished processes '
-        print(" INFO: OK: QProcess finished . . . ")
+    def on_index_changed(self):
+        ' enable disable the qgroupbox if needed '
+        if self.chooser.currentIndex() is 1:
+            self.group2.graphicsEffect().setEnabled(False)
+            self.group2.setEnabled(True)
+        else:
+            self.group2.graphicsEffect().setEnabled(True)
+            self.group2.setEnabled(False)
+        if self.chooser.currentIndex() is 0:
+            self.ledXAyatanaDesktopShortcuts.setEnabled(True)
+        else:
+            self.ledXAyatanaDesktopShortcuts.setEnabled(False)
 
-    def __str__(self):
-        ' self.__str__ builtin '
-        return __doc__, __version__, __license__, __author__
 
 ###############################################################################
 
